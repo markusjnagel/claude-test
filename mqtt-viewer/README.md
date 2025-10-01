@@ -51,7 +51,8 @@ docker build -f src/main/docker/Dockerfile.jvm -t mqtt-viewer:latest .
 ### Run Locally (Development Mode)
 
 ```bash
-export MQTT_BROKER_URL=tcp://192.168.1.100:1883
+export MQTT_BROKER_HOST=192.168.1.100
+export MQTT_BROKER_PORT=1883
 export MQTT_TOPIC="iot/smartmeter/sensor/#"
 ./mvnw quarkus:dev
 ```
@@ -64,8 +65,9 @@ The application will be available at: http://localhost:8080
 podman run -d \
   --name mqtt-viewer \
   -p 8080:8080 \
-  -e MQTT_BROKER_URL=tcp://192.168.1.100:1883 \
-  -e MQTT_TOPIC="iot/smartmeter/sensor/1/obis/1-0:1.8.0/255/value" \
+  -e MQTT_BROKER_HOST=192.168.1.100 \
+  -e MQTT_BROKER_PORT=1883 \
+  -e MQTT_TOPIC="warp3/wallbox/#" \
   mqtt-viewer:latest
 ```
 
@@ -75,8 +77,9 @@ podman run -d \
 docker run -d \
   --name mqtt-viewer \
   -p 8080:8080 \
-  -e MQTT_BROKER_URL=tcp://192.168.1.100:1883 \
-  -e MQTT_TOPIC="iot/smartmeter/sensor/1/obis/1-0:1.8.0/255/value" \
+  -e MQTT_BROKER_HOST=192.168.1.100 \
+  -e MQTT_BROKER_PORT=1883 \
+  -e MQTT_TOPIC="warp3/wallbox/#" \
   mqtt-viewer:latest
 ```
 
@@ -114,8 +117,9 @@ The application is configured via environment variables:
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
-| `MQTT_BROKER_URL` | MQTT broker connection URL | `tcp://localhost:1883` | `tcp://192.168.1.100:1883` |
-| `MQTT_TOPIC` | MQTT topic pattern (supports wildcards) | `test/#` | `iot/smartmeter/#` |
+| `MQTT_BROKER_HOST` | MQTT broker hostname or IP address | `localhost` | `192.168.1.100` |
+| `MQTT_BROKER_PORT` | MQTT broker port | `1883` | `1883` |
+| `MQTT_TOPIC` | MQTT topic pattern (supports wildcards) | `test/#` | `warp3/wallbox/#` |
 | `QUARKUS_HTTP_PORT` | HTTP port for web interface | `8080` | `8080` |
 
 ### MQTT Topic Wildcards
@@ -163,7 +167,7 @@ mqtt-viewer/
 
 ### Cannot connect to MQTT broker
 
-- Verify the MQTT broker URL is correct
+- Verify the MQTT broker host and port are correct
 - Ensure the broker is accessible from the container/host
 - Check network connectivity: `ping <broker-ip>`
 - Verify broker is running and listening on the specified port
