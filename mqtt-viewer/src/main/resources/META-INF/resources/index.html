@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Message Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .status {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .status.connected {
+            color: #4caf50;
+        }
+
+        .status.disconnected {
+            color: #f44336;
+        }
+
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message-card {
+            background-color: #e8e8e8;
+            border-radius: 4px;
+            padding: 16px;
+            border-left: 4px solid #cddc39;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .message-header {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .message-payload {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            font-weight: normal;
+            color: #222;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .message-timestamp {
+            color: #999;
+            font-size: 11px;
+        }
+
+        .no-messages {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MQTT Message Viewer</h1>
+        <div class="status" id="status">Connecting...</div>
+        <div class="messages" id="messages">
+            <div class="no-messages">Waiting for messages...</div>
+        </div>
+    </div>
+
+    <script>
+        const messagesContainer = document.getElementById('messages');
+        const statusElement = document.getElementById('status');
+        let messageCount = 0;
+
+        // Format timestamp
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toISOString().replace('T', ' ').substring(0, 23);
+        }
+
+        // Create message card
+        function createMessageCard(message) {
+            const card = document.createElement('div');
+            card.className = 'message-card';
+
+            card.innerHTML = `
+                <div class="message-header">Topic: ${message.topic}   QoS: ${message.qos}</div>
+                <div class="message-payload">${message.payload}</div>
+                <div class="message-timestamp">${formatTimestamp(message.timestamp)}</div>
+            `;
+
+            return card;
+        }
+
+        // Add message to the view
+        function addMessage(message) {
+            // Remove "no messages" placeholder
+            if (messageCount === 0) {
+                messagesContainer.innerHTML = '';
+            }
+
+            const card = createMessageCard(message);
+            messagesContainer.insertBefore(card, messagesContainer.firstChild);
+            messageCount++;
+
+            // Keep only last 100 messages in DOM
+            while (messagesContainer.children.length > 100) {
+                messagesContainer.removeChild(messagesContainer.lastChild);
+            }
+        }
+
+        // Load initial messages
+        async function loadInitialMessages() {
+            try {
+                const response = await fetch('/api/messages');
+                const messages = await response.json();
+
+                if (messages.length > 0) {
+                    messagesContainer.innerHTML = '';
+                    messageCount = 0;
+                    messages.reverse().forEach(message => {
+                        addMessage(message);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading initial messages:', error);
+            }
+        }
+
+        // Connect to SSE stream
+        function connectToStream() {
+            const eventSource = new EventSource('/api/messages/stream');
+
+            eventSource.onopen = () => {
+                statusElement.textContent = 'Connected';
+                statusElement.className = 'status connected';
+            };
+
+            eventSource.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                addMessage(message);
+            };
+
+            eventSource.onerror = () => {
+                statusElement.textContent = 'Disconnected - Reconnecting...';
+                statusElement.className = 'status disconnected';
+                eventSource.close();
+                setTimeout(connectToStream, 5000);
+            };
+        }
+
+        // Initialize
+        loadInitialMessages();
+        connectToStream();
+    </script>
+</body>
+</html>
